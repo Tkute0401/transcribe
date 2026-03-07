@@ -1,0 +1,20 @@
+# Node defaults
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Next.js / React
+.next/
+out/
+build/
+
+# Server / Python
+__pycache__/
+*.py[cod]
+*$py.class
+uploads/
+.env
+
+# OS
+.DS_Store
+Thumbs.db

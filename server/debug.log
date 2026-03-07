@@ -1,0 +1,71 @@
+[2026-01-03T19:23:18.692Z] Starting transcription for 1767468196461-Fin_Reel no 2  Dec(whatsapp).mp4...
+[2026-01-03T19:23:18.694Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T19:23:18.696Z] Video file detected. Extracting audio...
+[2026-01-03T19:23:20.224Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767468196461-Fin_Reel no 2  Dec(whatsapp).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767468196461-Fin_Reel no 2  Dec(whatsapp).mp3
+[2026-01-03T19:23:21.461Z] Audio extraction complete.
+[2026-01-03T19:23:55.634Z] ERROR: Transcription failed in catch block
+Error: Connection error.
+Error: Connection error.
+    at OpenAI.makeRequest (C:\Users\Kutet\Downloads\transcribe\server\node_modules\openai\core.js:332:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\Users\Kutet\Downloads\transcribe\server\src\server.js:116:27
+[2026-01-03T19:27:13.513Z] Starting transcription for 1767468433266-5 (1).mp4...
+[2026-01-03T19:27:13.515Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T19:27:13.516Z] Video file detected. Extracting audio...
+[2026-01-03T19:27:13.690Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767468433266-5 (1).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767468433266-5 (1).mp3
+[2026-01-03T19:27:14.692Z] Audio extraction complete.
+[2026-01-03T19:27:14.697Z] Audio file path: C:\Users\Kutet\Downloads\transcribe\server\uploads\1767468433266-5 (1).mp3
+[2026-01-03T19:27:14.703Z] Audio file size: 0.46 MB
+[2026-01-03T19:27:48.203Z] ERROR: Transcription failed in catch block
+Error: Connection error.
+Error: Connection error.
+    at OpenAI.makeRequest (C:\Users\Kutet\Downloads\transcribe\server\node_modules\openai\core.js:332:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\Users\Kutet\Downloads\transcribe\server\src\server.js:125:27
+[2026-01-03T19:37:21.767Z] Starting transcription for 1767469041620-5 (1).mp4...
+[2026-01-03T19:37:21.769Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T19:37:21.770Z] Video file detected. Extracting audio...
+[2026-01-03T19:37:23.685Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469041620-5 (1).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469041620-5 (1).mp3
+[2026-01-03T19:37:24.508Z] Audio extraction complete.
+[2026-01-03T19:37:24.512Z] Audio file path: C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469041620-5 (1).mp3
+[2026-01-03T19:37:24.514Z] Audio file size: 0.46 MB
+[2026-01-03T19:37:57.887Z] ERROR: Transcription failed in catch block
+Error: Connection error.
+Error: Connection error.
+    at OpenAI.makeRequest (C:\Users\Kutet\Downloads\transcribe\server\node_modules\openai\core.js:332:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\Users\Kutet\Downloads\transcribe\server\src\server.js:132:27
+[2026-01-03T19:43:58.374Z] Starting transcription for 1767469438177-5 (1).mp4...
+[2026-01-03T19:43:58.376Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T19:43:58.378Z] Video file detected. Extracting audio...
+[2026-01-03T19:43:58.514Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469438177-5 (1).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469438177-5 (1).mp3
+[2026-01-03T19:43:59.128Z] Audio extraction complete.
+[2026-01-03T19:43:59.133Z] Audio file path: C:\Users\Kutet\Downloads\transcribe\server\uploads\1767469438177-5 (1).mp3
+[2026-01-03T19:43:59.148Z] Audio file size: 0.46 MB
+[2026-01-03T19:44:32.587Z] ERROR: Transcription failed in catch block
+Error: Connection error.
+Error: Connection error.
+    at OpenAI.makeRequest (C:\Users\Kutet\Downloads\transcribe\server\node_modules\openai\core.js:332:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\Users\Kutet\Downloads\transcribe\server\src\server.js:134:27
+[2026-01-03T20:00:24.285Z] Starting transcription for 1767470423951-5 (1).mp4...
+[2026-01-03T20:00:24.289Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T20:00:24.290Z] Video file detected. Extracting audio...
+[2026-01-03T20:00:26.442Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767470423951-5 (1).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767470423951-5 (1).mp3
+[2026-01-03T20:00:27.173Z] Audio extraction complete.
+[2026-01-03T20:00:27.174Z] Audio file path: C:\Users\Kutet\Downloads\transcribe\server\uploads\1767470423951-5 (1).mp3
+[2026-01-03T20:00:27.175Z] Audio file size: 0.46 MB
+[2026-01-03T20:00:27.177Z] Sending request to OpenAI via Axios...
+[2026-01-03T20:00:29.099Z] ERROR: OpenAI API Error (429)
+{"error":{"message":"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}}
+
+[2026-01-03T20:20:25.268Z] Starting transcription for 1767471625067-5 (1).mp4...
+[2026-01-03T20:20:25.271Z] FFmpeg Path: C:\Users\Kutet\Downloads\transcribe\server\node_modules\ffmpeg-static\ffmpeg.exe
+[2026-01-03T20:20:25.273Z] Video file detected. Extracting audio...
+[2026-01-03T20:20:26.643Z] Spawned Ffmpeg with command: ffmpeg -i C:\Users\Kutet\Downloads\transcribe\server\uploads\1767471625067-5 (1).mp4 -y -f mp3 C:\Users\Kutet\Downloads\transcribe\server\uploads\1767471625067-5 (1).mp3
+[2026-01-03T20:20:27.524Z] Audio extraction complete.
+[2026-01-03T20:20:27.528Z] Audio file path: C:\Users\Kutet\Downloads\transcribe\server\uploads\1767471625067-5 (1).mp3
+[2026-01-03T20:20:27.530Z] Audio file size: 0.46 MB
+[2026-01-03T20:20:27.532Z] Starting local transcription with Whisper (Python)...
+[2026-01-03T20:21:01.794Z] Skipping cleanup for debugging purposes.
+[2026-01-03T20:21:01.795Z] Transcription complete

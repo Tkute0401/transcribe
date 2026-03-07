@@ -1,0 +1,7 @@
+{
+    "ignore": [
+        "uploads/*",
+        "src/transcribe.py",
+        "src/burn.py"
+    ]
+}
