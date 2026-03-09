@@ -12,7 +12,7 @@ const mockTranscript = [
     { id: 5, start: 6.0, end: 8.0, text: "transcription." },
 ];
 
-export default function Editor() {
+export default function Editor({ index }: { index?: number }) {
     const [transcript, setTranscript] = useState<any[]>(mockTranscript);
     const [playedSeconds, setPlayedSeconds] = useState(0);
     const [isClient, setIsClient] = useState(false);
@@ -40,9 +40,28 @@ export default function Editor() {
     useEffect(() => {
         setIsClient(true);
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('transcription');
-            if (stored) {
-                const data = JSON.parse(stored);
+            let data: any = null;
+
+            if (index !== undefined && !isNaN(index)) {
+                // Try loading from bulk array
+                const storedBulk = localStorage.getItem('transcription_bulk');
+                if (storedBulk) {
+                    const bulkArray = JSON.parse(storedBulk);
+                    if (bulkArray[index]) {
+                        data = bulkArray[index];
+                    }
+                }
+            }
+
+            // Fallback or legacy load
+            if (!data) {
+                const stored = localStorage.getItem('transcription');
+                if (stored) {
+                    data = JSON.parse(stored);
+                }
+            }
+
+            if (data) {
                 if (data.words) {
                     setTranscript(data.words);
                 }
@@ -58,7 +77,7 @@ export default function Editor() {
                 }
             }
         }
-    }, []);
+    }, [index]);
 
     const handleProgress = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
         const video = e.currentTarget;
