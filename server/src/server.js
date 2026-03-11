@@ -11,7 +11,7 @@ require('dotenv').config();
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 console.log('Server starting/restarting...');
 
@@ -40,7 +40,7 @@ const upload = multer({ storage: storage });
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: '*' })); // Allow all origins for the Railway deployment
 app.use(express.json());
 
 // Routes
