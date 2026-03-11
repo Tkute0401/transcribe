@@ -20,8 +20,9 @@ RUN npm install
 # Copy Python dependency files
 COPY requirements.txt ./
 
-# Install Python dependencies
-RUN pip3 install -r requirements.txt
+# Install Python dependencies explicitly with PyTorch CPU to prevent huge CUDA downloads
+RUN pip3 install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
 COPY . .
