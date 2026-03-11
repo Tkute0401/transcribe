@@ -83,7 +83,6 @@ export default function Upload() {
 
                 // 2. Transcribe
                 setStatuses(prev => ({ ...prev, [fileId]: 'Transcribing (This may take a while)...' }));
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
                 const transcribeResponse = await axios.post(`${API_URL}/api/transcribe`, {
                     filename: response.data.filename,
                     language: actualLanguage,
