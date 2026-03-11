@@ -60,7 +60,6 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   });
 });
 
-const { exec } = require('child_process');
 
 app.post('/api/transcribe', async (req, res) => {
   const { filename, language, model } = req.body;
