@@ -241,7 +241,8 @@ export default function Editor({ index }: { index?: number }) {
         if (!serverFilename) return;
         setIsBurning(true);
         try {
-            const response = await fetch('http://localhost:3001/api/burn', {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${API_URL}/api/burn`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -256,7 +257,8 @@ export default function Editor({ index }: { index?: number }) {
             if (data.outputFile) {
                 // Trigger download
                 const link = document.createElement('a');
-                link.href = `http://localhost:3001/uploads/${data.outputFile}`;
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                link.href = `${API_URL}/uploads/${data.outputFile}`;
                 link.download = data.outputFile;
                 document.body.appendChild(link);
                 link.click();
@@ -335,7 +337,7 @@ export default function Editor({ index }: { index?: number }) {
                     <>
                         <video
                             id="main-video"
-                            src={`http://localhost:3001/uploads/${serverFilename}`}
+                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/uploads/${serverFilename}`}
                             className="w-full h-full object-contain"
                             controls
                             onTimeUpdate={handleProgress}

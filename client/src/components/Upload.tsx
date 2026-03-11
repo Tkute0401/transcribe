@@ -71,7 +71,8 @@ export default function Upload() {
                 const formData = new FormData();
                 formData.append('file', currentFile);
 
-                const response = await axios.post('http://localhost:3001/api/upload', formData, {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                const response = await axios.post(`${API_URL}/api/upload`, formData, {
                     onUploadProgress: (progressEvent) => {
                         if (progressEvent.total) {
                             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -82,7 +83,8 @@ export default function Upload() {
 
                 // 2. Transcribe
                 setStatuses(prev => ({ ...prev, [fileId]: 'Transcribing (This may take a while)...' }));
-                const transcribeResponse = await axios.post('http://localhost:3001/api/transcribe', {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                const transcribeResponse = await axios.post(`${API_URL}/api/transcribe`, {
                     filename: response.data.filename,
                     language: actualLanguage,
                     model: model,
