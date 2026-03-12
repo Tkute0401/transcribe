@@ -49,14 +49,68 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
+
+  const originalPath = req.file.path;
+  const ext = path.extname(req.file.filename).toLowerCase();
+  const uploadDir = path.join(__dirname, '../uploads');
+
+  // Compress video to 720p / CRF-28 / AAC-128k to reduce storage & streaming time.
+  // Audio-only files get re-encoded to mono MP3 128k.
+  // The compressed output replaces the original so all downstream code is unchanged.
+  const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext);
+  const isAudio = ['.mp3', '.m4a', '.wav', '.aac', '.ogg', '.flac'].includes(ext);
+
+  if (isVideo || isAudio) {
+    const compressedName = `compressed_${req.file.filename}${isAudio && ext !== '.mp3' ? '.mp3' : ''}`;
+    const compressedPath = path.join(uploadDir, compressedName);
+
+    try {
+      log(`Compressing ${req.file.filename} ...`);
+      await new Promise((resolve, reject) => {
+        let cmd = ffmpeg(originalPath);
+        if (isVideo) {
+          cmd = cmd
+            .videoCodec('libx264')
+            .addOptions([
+              '-crf 28',           // quality — lower = bigger; 28 is good balance
+              '-preset fast',      // encoding speed
+              '-vf scale=\'min(1280,iw)\':\'min(720,ih)\':force_original_aspect_ratio=decrease', // max 720p
+              '-movflags +faststart', // web-optimised: moov atom at front for fast streaming
+            ])
+            .audioCodec('aac')
+            .audioBitrate('128k')
+            .audioChannels(2);
+        } else {
+          // Audio-only: normalise to mono MP3 128k — Whisper doesn't need stereo
+          cmd = cmd.audioCodec('libmp3lame').audioBitrate('128k').audioChannels(1);
+        }
+        cmd
+          .on('end', resolve)
+          .on('error', reject)
+          .save(compressedPath);
+      });
+
+      // Swap files: delete original, rename compressed to original name
+      fs.unlinkSync(originalPath);
+      fs.renameSync(compressedPath, originalPath);
+
+      const stats = fs.statSync(originalPath);
+      log(`Compression done — ${req.file.filename} is now ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
+    } catch (compErr) {
+      // If compression fails, proceed with the original (don't block the user)
+      log(`Compression failed for ${req.file.filename}: ${compErr.message} — using original`);
+      if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath);
+    }
+  }
+
   res.json({
-    message: 'File uploaded successfully',
+    message: 'File uploaded and compressed successfully',
     filename: req.file.filename,
-    path: req.file.path
+    path: req.file.path,
   });
 });
 

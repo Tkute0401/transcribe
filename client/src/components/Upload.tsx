@@ -81,6 +81,10 @@ export default function Upload() {
                         if (progressEvent.total) {
                             const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                             setProgresses(prev => ({ ...prev, [fileId]: pct }));
+                            // When bytes are fully sent, server compresses before responding
+                            if (pct >= 100) {
+                                setStatuses(prev => ({ ...prev, [fileId]: 'compressing' }));
+                            }
                         }
                     },
                 });
@@ -112,16 +116,18 @@ export default function Upload() {
     };
 
     const getStatusLabel = (s: string) => {
-        if (s === 'uploading') return 'Uploading...';
+        if (s === 'uploading')    return 'Uploading...';
+        if (s === 'compressing')  return 'Compressing...';
         if (s === 'transcribing') return 'Transcribing...';
-        if (s === 'done') return 'Done';
-        if (s === 'error') return 'Failed';
+        if (s === 'done')         return 'Done';
+        if (s === 'error')        return 'Failed';
         return 'Pending';
     };
 
     const getStatusColor = (s: string) => {
-        if (s === 'done') return '#34d399';
-        if (s === 'error') return '#f87171';
+        if (s === 'done')                           return '#34d399';
+        if (s === 'error')                          return '#f87171';
+        if (s === 'compressing')                    return '#fb923c';  // orange
         if (s === 'uploading' || s === 'transcribing') return '#a78bfa';
         return 'var(--text-muted)';
     };
@@ -185,7 +191,7 @@ export default function Upload() {
                                 <div className="relative flex items-center gap-2 flex-shrink-0">
                                     {s && (
                                         <span className="text-xs font-semibold" style={{ color: getStatusColor(s) }}>
-                                            {(s === 'uploading' || s === 'transcribing') && (
+                                            {(s === 'uploading' || s === 'compressing' || s === 'transcribing') && (
                                                 <Loader2 size={12} className="inline mr-1 animate-spin" />
                                             )}
                                             {getStatusLabel(s)}
