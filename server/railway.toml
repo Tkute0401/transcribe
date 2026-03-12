@@ -1,3 +1,2 @@
 [build]
-builder = "docker"
-timeout = 1800
+builder = "DOCKERFILE"

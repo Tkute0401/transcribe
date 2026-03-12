@@ -1,86 +1,128 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, ArrowRight, Play, LayoutDashboard } from 'lucide-react';
+import { FileText, ArrowRight, Play, Plus, Trash2, Clock, Type } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
     const [transcriptions, setTranscriptions] = useState<any[]>([]);
 
     useEffect(() => {
-        // Load bulk transcriptions
         const existingData = localStorage.getItem('transcription_bulk');
         if (existingData) {
-            try {
-                setTranscriptions(JSON.parse(existingData));
-            } catch (e) {
-                console.error("Failed to parse bulk transcriptions");
-            }
+            try { setTranscriptions(JSON.parse(existingData)); } catch (_) { /* ignore */ }
         }
     }, []);
 
+    const clearAll = () => {
+        if (confirm('Clear all transcriptions? This cannot be undone.')) {
+            localStorage.removeItem('transcription_bulk');
+            setTranscriptions([]);
+        }
+    };
+
     const formatDuration = (seconds: number) => {
-        if (!seconds) return "Unknown";
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
+        if (!seconds) return '—';
+        const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
-        return [h, m > 9 ? m : h ? '0' + m : m || '0', s > 9 ? s : '0' + s].filter(Boolean).join(':');
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const wordCount = (t: any) => {
+        return t.words?.length || t.text?.split(' ').length || 0;
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-8">
-            <div className="flex items-center space-x-3 mb-8">
-                <LayoutDashboard className="w-8 h-8 text-blue-600" />
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    Your Transcriptions
-                </h1>
+        <div className="max-w-5xl mx-auto px-6 py-12">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-10">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text)' }}>Your Transcriptions</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                        {transcriptions.length} file{transcriptions.length !== 1 ? 's' : ''} transcribed
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {transcriptions.length > 0 && (
+                        <button onClick={clearAll} className="btn-ghost flex items-center gap-2 text-sm">
+                            <Trash2 size={14} /> Clear All
+                        </button>
+                    )}
+                    <Link href="/" className="btn-primary text-sm py-2 px-4 flex items-center gap-2">
+                        <Plus size={16} /> New Upload
+                    </Link>
+                </div>
             </div>
 
             {transcriptions.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-12 text-center border border-gray-200 dark:border-gray-700">
-                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">No transcriptions yet</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mb-6">Upload some files from the home page to get started.</p>
-                    <Link href="/" className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                <div className="glass p-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
+                        style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.2)' }}>
+                        <FileText size={28} style={{ color: 'var(--accent-light)' }} />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text)' }}>No transcriptions yet</h3>
+                    <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Upload your first audio or video file to get started.</p>
+                    <Link href="/" className="btn-primary inline-flex text-sm py-2.5 px-5">
                         Go to Upload
                     </Link>
                 </div>
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {transcriptions.map((t, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                        <div key={i} className="glass group hover:scale-[1.01] transition-all duration-200 flex flex-col overflow-hidden"
+                            style={{ cursor: 'default' }}>
+                            {/* Card top */}
                             <div className="p-5 flex-1 space-y-4">
                                 <div className="flex items-start justify-between">
-                                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                                        <Play className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(59,130,246,0.2))', border: '1px solid rgba(124,58,237,0.3)' }}>
+                                        <Play size={16} style={{ color: 'var(--accent-light)' }} />
                                     </div>
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                        Completed
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                                        style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.2)' }}>
+                                        ✓ Done
                                     </span>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate" title={t.originalFilename}>
+                                    <h3 className="font-semibold text-sm leading-snug truncate" style={{ color: 'var(--text)' }} title={t.originalFilename}>
                                         {t.originalFilename}
                                     </h3>
-                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex justify-between">
-                                        <span>Language: {t.language || 'Auto'}</span>
-                                        <span>{formatDuration(t.duration)}</span>
-                                    </p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        {t.duration && (
+                                            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                <Clock size={11} /> {formatDuration(t.duration)}
+                                            </span>
+                                        )}
+                                        <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            <Type size={11} /> {wordCount(t)} words
+                                        </span>
+                                        {t.language && (
+                                            <span className="text-xs uppercase font-semibold px-1.5 py-0.5 rounded"
+                                                style={{ background: 'rgba(167,139,250,0.12)', color: 'var(--accent-light)' }}>
+                                                {t.language}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 italic opacity-80">
-                                    &quot;{t.text}&quot;
-                                </div>
+                                {t.text && (
+                                    <p className="text-xs leading-relaxed line-clamp-3 italic"
+                                        style={{ color: 'var(--text-muted)' }}>
+                                        &ldquo;{t.text}&rdquo;
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="bg-gray-50 dark:bg-gray-750 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+                            {/* Card footer */}
+                            <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border)' }}>
                                 <Link
                                     href={`/editor?id=${i}`}
-                                    className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 flex items-center justify-between"
+                                    className="flex items-center justify-between text-sm font-medium transition-colors group"
+                                    style={{ color: 'var(--accent-light)' }}
                                 >
-                                    Open Editor
-                                    <ArrowRight className="w-4 h-4" />
+                                    <span>Open Editor</span>
+                                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
                                 </Link>
                             </div>
                         </div>

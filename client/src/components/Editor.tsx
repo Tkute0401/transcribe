@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Flame, Edit3, Check, FileText, Wand2, Loader2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
-// Mock data
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const mockTranscript = [
-    { id: 1, start: 0, end: 1.5, text: "Hello" },
-    { id: 2, start: 1.5, end: 3.0, text: "welcome" },
-    { id: 3, start: 3.0, end: 4.5, text: "to" },
-    { id: 4, start: 4.5, end: 6.0, text: "the" },
-    { id: 5, start: 6.0, end: 8.0, text: "transcription." },
+    { id: 1, start: 0, end: 1.5, text: 'Hello' },
+    { id: 2, start: 1.5, end: 3.0, text: 'welcome' },
+    { id: 3, start: 3.0, end: 4.5, text: 'to' },
+    { id: 4, start: 4.5, end: 6.0, text: 'the' },
+    { id: 5, start: 6.0, end: 8.0, text: 'transcription.' },
 ];
 
 export default function Editor({ index }: { index?: number }) {
@@ -23,566 +25,416 @@ export default function Editor({ index }: { index?: number }) {
     const [activeTab, setActiveTab] = useState<'transcript' | 'style'>('transcript');
     const [isBurning, setIsBurning] = useState(false);
     const [styleConfig, setStyleConfig] = useState({
-        fontSize: 'medium', // small, medium, large, huge
+        fontSize: 'medium',
         color: '#FFFFFF',
         backgroundColor: '#000000',
-        fontFamily: 'sans', // sans, serif, mono
-        animation: 'karaoke', // none, fade, pop, slide; karaoke
-        position: 'bottom', // top, middle, bottom
+        fontFamily: 'sans',
+        animation: 'karaoke',
+        position: 'bottom',
         bold: false,
         italic: false,
         uppercase: false,
-        outline: 2, // 0-5
-        shadow: 2// 0-5
+        outline: 2,
+        shadow: 2,
     });
 
-    // Load from local storage on mount
     useEffect(() => {
         setIsClient(true);
         if (typeof window !== 'undefined') {
             let data: any = null;
-
             if (index !== undefined && !isNaN(index)) {
-                // Try loading from bulk array
                 const storedBulk = localStorage.getItem('transcription_bulk');
                 if (storedBulk) {
                     const bulkArray = JSON.parse(storedBulk);
-                    if (bulkArray[index]) {
-                        data = bulkArray[index];
-                    }
+                    if (bulkArray[index]) data = bulkArray[index];
                 }
             }
-
-            // Fallback or legacy load
             if (!data) {
                 const stored = localStorage.getItem('transcription');
-                if (stored) {
-                    data = JSON.parse(stored);
-                }
+                if (stored) data = JSON.parse(stored);
             }
-
             if (data) {
-                if (data.words) {
-                    setTranscript(data.words);
-                }
-                if (data.originalFilename) {
-                    const name = data.originalFilename.replace(/\.[^/.]+$/, "");
-                    setFilename(name);
-                }
-                if (data.serverFilename) {
-                    setServerFilename(data.serverFilename);
-                }
-                if (data.styleConfig) {
-                    setStyleConfig(prev => ({ ...prev, ...data.styleConfig }));
-                }
+                if (data.words) setTranscript(data.words);
+                if (data.originalFilename) setFilename(data.originalFilename.replace(/\.[^/.]+$/, ''));
+                if (data.serverFilename) setServerFilename(data.serverFilename);
+                if (data.styleConfig) setStyleConfig(prev => ({ ...prev, ...data.styleConfig }));
             }
         }
     }, [index]);
 
-    const handleProgress = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-        const video = e.currentTarget;
-        setPlayedSeconds(video.currentTime);
-    };
-
-    // Save changes to localStorage whenever transcript or styleConfig updates
     useEffect(() => {
-        if (typeof window !== 'undefined') { // Check window for SSR safety
-            // Prevent overwriting local storage with mock data on initial load
-            if (transcript === mockTranscript) {
-                return;
-            }
-
-            // Get existing data to preserve fields we might not have in state (though we load all critical ones)
+        if (typeof window !== 'undefined' && transcript !== mockTranscript) {
             const stored = localStorage.getItem('transcription');
             let baseData = {};
-            if (stored) {
-                baseData = JSON.parse(stored);
-            }
-
-            // Only save if we have meaningful data or checking against defaults
-            localStorage.setItem('transcription', JSON.stringify({
-                ...baseData,
-                words: transcript,
-                styleConfig: styleConfig
-            }));
+            if (stored) baseData = JSON.parse(stored);
+            localStorage.setItem('transcription', JSON.stringify({ ...baseData, words: transcript, styleConfig }));
         }
     }, [transcript, styleConfig]);
 
-    const handleWordClick = (start: number, index: number) => {
-        if (isEditing) {
-            setEditingIndex(index);
-        } else {
-            const video = document.getElementById('main-video') as HTMLVideoElement;
-            if (video) {
-                video.currentTime = start;
-            }
-        }
-    };
-
-    const handleWordChange = (index: number, newText: string) => {
-        const newTranscript = [...transcript];
-        // Handle both structure types
-        if (newTranscript[index].word !== undefined) {
-            newTranscript[index].word = newText;
-        } else {
-            newTranscript[index].text = newText;
-        }
-        setTranscript(newTranscript);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-        if (e.key === 'Enter') {
-            setEditingIndex(null);
-        }
-    };
-
-    // Group words into subtitle chunks for better readability
     const getSubtitleChunks = () => {
         const chunks: { start: number; end: number; text: string }[] = [];
         let currentWords: any[] = [];
         let currentLength = 0;
         let chunkStart = 0;
-
-        transcript.forEach((word, index) => {
-            if (currentWords.length === 0) {
-                chunkStart = word.start;
-            }
-
-            // Check if we should break the chunk
-            // Break if:
-            // 1. Current chunk is too long (> 40 chars)
-            // 2. Big gap between words (> 1s)
-            // 3. Sentence ending punctuation (optional improvement)
-            const gap = index > 0 ? word.start - transcript[index - 1].end : 0;
-            const wordText = (word.word || word.text || "").toString();
-
+        transcript.forEach((word, i) => {
+            if (currentWords.length === 0) chunkStart = word.start;
+            const gap = i > 0 ? word.start - transcript[i - 1].end : 0;
+            const wordText = (word.word || word.text || '').toString();
             if (currentWords.length > 0 && (currentLength + wordText.length > 50 || gap > 1.0)) {
-                // Push current chunk
-                chunks.push({
-                    start: chunkStart,
-                    end: transcript[index - 1].end,
-                    text: currentWords.map(w => (w.word || w.text || "").toString().trim()).join(' ')
-                });
-                currentWords = [];
-                currentLength = 0;
-                chunkStart = word.start;
+                chunks.push({ start: chunkStart, end: transcript[i - 1].end, text: currentWords.map(w => (w.word || w.text || '').toString().trim()).join(' ') });
+                currentWords = []; currentLength = 0; chunkStart = word.start;
             }
-
             currentWords.push(word);
-            currentLength += wordText.length + 1; // +1 for space
+            currentLength += wordText.length + 1;
         });
-
-        // Push last chunk
-        if (currentWords.length > 0) {
-            chunks.push({
-                start: chunkStart,
-                end: currentWords[currentWords.length - 1].end,
-                text: currentWords.map(w => (w.word || w.text || "").toString().trim()).join(' ')
-            });
-        }
-
+        if (currentWords.length > 0) chunks.push({ start: chunkStart, end: currentWords[currentWords.length - 1].end, text: currentWords.map(w => (w.word || w.text || '').toString().trim()).join(' ') });
         return chunks;
     };
 
     const subtitleChunks = getSubtitleChunks();
+    const currentChunk = subtitleChunks.find(c => playedSeconds >= c.start && playedSeconds < c.end);
+    const currentCaptionText = currentChunk?.text || '';
 
-    // Find current caption to display
-    const currentChunk = subtitleChunks.find(chunk => playedSeconds >= chunk.start && playedSeconds < chunk.end);
-    const currentCaptionText = currentChunk?.text || "";
-
-    // Style Helpers
-    // Style Helpers
     const getCaptionStyle = () => {
-        const baseStyle: any = {
+        const s: any = {
             color: styleConfig.color,
             fontFamily: styleConfig.fontFamily === 'serif' ? 'serif' : styleConfig.fontFamily === 'mono' ? 'monospace' : 'sans-serif',
             fontWeight: styleConfig.bold ? 'bold' : 'normal',
             fontStyle: styleConfig.italic ? 'italic' : 'normal',
             textTransform: styleConfig.uppercase ? 'uppercase' : 'none',
         };
-
-        if (styleConfig.fontSize === 'small') baseStyle.fontSize = '1.25rem';
-        if (styleConfig.fontSize === 'medium') baseStyle.fontSize = '1.5rem';
-        if (styleConfig.fontSize === 'large') baseStyle.fontSize = '2.25rem';
-        if (styleConfig.fontSize === 'huge') baseStyle.fontSize = '3rem';
-
-        // Approximate Outline/Shadow for CSS Preview
-        // ASS Outline is a stroke. CSS text-stroke is non-standard but -webkit-text-stroke works in most. 
-        // Or text-shadow hack.
-        const shadowPx = styleConfig.shadow * 2;
-        if (styleConfig.shadow > 0) {
-            baseStyle.textShadow = `${shadowPx}px ${shadowPx}px 4px rgba(0,0,0,0.8)`;
-        }
-
-        // Outline hack using text-shadow if needed, but text-stroke is better for "Outline" look
-        if (styleConfig.outline > 0) {
-            const outlineColor = 'black'; // ASS default is usually black
-            const width = styleConfig.outline + 'px';
-            baseStyle.WebkitTextStroke = `${width} ${outlineColor}`;
-        }
-
-        return baseStyle;
+        if (styleConfig.fontSize === 'small') s.fontSize = '1.1rem';
+        if (styleConfig.fontSize === 'medium') s.fontSize = '1.4rem';
+        if (styleConfig.fontSize === 'large') s.fontSize = '2rem';
+        if (styleConfig.fontSize === 'huge') s.fontSize = '2.8rem';
+        if (styleConfig.shadow > 0) s.textShadow = `${styleConfig.shadow * 2}px ${styleConfig.shadow * 2}px 4px rgba(0,0,0,0.8)`;
+        if (styleConfig.outline > 0) s.WebkitTextStroke = `${styleConfig.outline}px black`;
+        return s;
     };
 
-    const getAnimationClass = () => {
+    const getPositionClass = () => {
+        if (styleConfig.position === 'top') return 'top-4';
+        if (styleConfig.position === 'middle') return 'top-1/2 -translate-y-1/2';
+        return 'bottom-4';
+    };
+
+    const getAnimCls = () => {
         if (styleConfig.animation === 'fade') return 'animate-fade-in';
         if (styleConfig.animation === 'pop') return 'animate-pop-in';
         if (styleConfig.animation === 'slide') return 'animate-slide-up';
         return '';
     };
 
-    const getPositionClass = () => {
-        if (styleConfig.position === 'top') return 'top-10 items-start';
-        if (styleConfig.position === 'middle') return 'top-1/2 -translate-y-1/2 items-center';
-        return 'bottom-10 items-end'; // Default bottom
+    const handleWordChange = (i: number, val: string) => {
+        const n = [...transcript];
+        if (n[i].word !== undefined) n[i].word = val; else n[i].text = val;
+        setTranscript(n);
+    };
+
+    const downloadFile = (content: string, name: string, type: string) => {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+    };
+
+    const exportTxt = () => downloadFile(transcript.map(w => (w.word || w.text || '').toString().trim()).join(' '), `${filename}.txt`, 'text/plain');
+
+    const formatTime = (s: number) => new Date(s * 1000).toISOString().substr(11, 12).replace('.', ',');
+
+    const exportSrt = () => {
+        let srt = ''; let counter = 1; let cur: any[] = []; let st = transcript[0]?.start || 0;
+        transcript.forEach((w, i) => {
+            cur.push(w);
+            if (w.end - st > 5 || cur.length > 10 || i === transcript.length - 1) {
+                srt += `${counter}\n${formatTime(st)} --> ${formatTime(w.end)}\n${cur.map(x => (x.word || x.text || '').toString().trim()).join(' ').trim()}\n\n`;
+                counter++; cur = [];
+                if (i < transcript.length - 1) st = transcript[i + 1].start;
+            }
+        });
+        downloadFile(srt, `${filename}.srt`, 'text/plain');
     };
 
     const handleBurn = async () => {
         if (!serverFilename) return;
         setIsBurning(true);
         try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${API_URL}/api/burn`, {
+            const res = await fetch(`${API_URL}/api/burn`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filename: serverFilename,
-                    transcript: transcript,
-                    styleConfig: styleConfig
-                })
+                body: JSON.stringify({ filename: serverFilename, transcript, styleConfig }),
             });
-
-            const data = await response.json();
-
+            const data = await res.json();
             if (data.outputFile) {
-                // Trigger download
-                const link = document.createElement('a');
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-                link.href = `${API_URL}/uploads/${data.outputFile}`;
-                link.download = data.outputFile;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const a = document.createElement('a');
+                a.href = `${API_URL}/uploads/${data.outputFile}`;
+                a.download = data.outputFile;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
             } else {
-                alert("Burning failed: " + (data.error || "Unknown error"));
+                alert('Burn failed: ' + (data.error || 'Unknown error'));
             }
-        } catch (error) {
-            console.error("Burn error:", error);
-            alert("Failed to connect to server for burning.");
+        } catch (e) {
+            alert('Failed to connect to server.');
         } finally {
             setIsBurning(false);
         }
     };
 
-    const downloadFile = (content: string, filename: string, type: string) => {
-        const blob = new Blob([content], { type });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    };
-
-    const exportTxt = () => {
-        const text = transcript.map(w => (w.word || w.text || '').toString().trim()).join(' ');
-        downloadFile(text, `${filename}.txt`, 'text/plain');
-    };
-
-    const formatTime = (seconds: number) => {
-        const date = new Date(0);
-        date.setSeconds(seconds);
-        const iso = date.toISOString().substr(11, 12);
-        return iso.replace('.', ',');
-    };
-
-    const exportSrt = () => {
-        let srtContent = '';
-        let counter = 1;
-
-        // Group words into chunks of ~5 seconds or ~10 words for basic subtitles
-        let currentChunk: any[] = [];
-        let startTime = transcript[0]?.start || 0;
-
-        transcript.forEach((word, index) => {
-            currentChunk.push(word);
-
-            // Break chunk if duration > 5s or length > 10 words or last word
-            const duration = word.end - startTime;
-            if (duration > 5 || currentChunk.length > 10 || index === transcript.length - 1) {
-                const endTime = word.end;
-                const text = currentChunk.map(w => (w.word || w.text || '').toString().trim()).join(' ');
-
-                srtContent += `${counter}\n`;
-                srtContent += `${formatTime(startTime)} --> ${formatTime(endTime)}\n`;
-                srtContent += `${text.trim()}\n\n`;
-
-                counter++;
-                currentChunk = [];
-                if (index < transcript.length - 1) {
-                    startTime = transcript[index + 1].start;
-                }
-            }
-        });
-
-        downloadFile(srtContent, `${filename}.srt`, 'text/plain');
-    };
+    const SC = (p: { label: string; children: React.ReactNode }) => (
+        <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>{p.label}</label>
+            {p.children}
+        </div>
+    );
 
     return (
-        <div className="flex flex-col h-full space-y-4">
-            <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg group">
-                {serverFilename ? (
-                    <>
-                        <video
-                            id="main-video"
-                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/uploads/${serverFilename}`}
-                            className="w-full h-full object-contain"
-                            controls
-                            onTimeUpdate={handleProgress}
-                        />
-                        {/* Caption Overlay */}
-                        <div className={`absolute left-0 right-0 text-center pointer-events-none p-4 flex justify-center ${getPositionClass()}`}>
-                            <div
-                                className={`inline-block px-4 py-2 rounded shadow-sm backdrop-blur-sm transition-all duration-300 ${getAnimationClass()}`}
-                                style={{
-                                    backgroundColor: `${styleConfig.backgroundColor}80`, // 50% opacity hex
-                                    ...getCaptionStyle()
-                                }}
-                            >
-                                {styleConfig.animation === 'karaoke' && currentChunk ? (
-                                    <span>
-                                        {currentChunk.text.split(' ').map((word, i) => {
-                                            // Simple Highlight Logic: Check if we are roughly at this word position
-                                            // Logic is approximate for chunks. Ideally we need exact word timestamps.
-                                            // For now, let's just highlight the whole chunk or use word-level matching from original transcript if possible.
-                                            return <span key={i} className="mr-1">{word}</span>
-                                        })}
-                                        {/* Better Karaoke: Highlight the Whole Chunk for now since we don't have per-word sync in chunk view easily without re-mapping */}
-                                        {/* actually, let's just show text for V1 of styles */}
-                                    </span>
-                                ) : null}
-                                {currentCaptionText}
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-white">
-                        <p>No video source found. Please upload a file.</p>
-                    </div>
-                )}
+        <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+            {/* Back link */}
+            <div className="max-w-7xl mx-auto px-6 py-4">
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-light)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+                    <ArrowLeft size={15} /> Back to Dashboard
+                </Link>
             </div>
 
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 overflow-y-auto border border-gray-200 dark:border-gray-700 relative flex flex-col">
-                <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
-                    <div className="flex space-x-4">
-                        <button
-                            onClick={() => setActiveTab('transcript')}
-                            className={`pb-2 text-sm font-semibold transition ${activeTab === 'transcript' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                        >
-                            Transcript
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('style')}
-                            className={`pb-2 text-sm font-semibold transition ${activeTab === 'style' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                        >
-                            Style & Burn
-                        </button>
-                    </div>
+            {/* Title */}
+            <div className="max-w-7xl mx-auto px-6 pb-4">
+                <h1 className="text-xl font-bold truncate" style={{ color: 'var(--text)' }} title={filename}>{filename}</h1>
+            </div>
 
-                    {activeTab === 'transcript' && (
-                        <div className="space-x-2">
-                            <button onClick={exportTxt} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200 transition">
-                                TXT
-                            </button>
-                            <button onClick={exportSrt} className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded text-white transition flex items-center gap-1">
-                                <Download size={14} /> SRT
-                            </button>
-                            <button
-                                onClick={() => setIsEditing(!isEditing)}
-                                className={`px-3 py-1.5 text-sm rounded transition ${isEditing ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200'}`}
-                            >
-                                {isEditing ? 'Done Editing' : 'Edit Text'}
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {activeTab === 'transcript' ? (
-                    <div className="flex flex-wrap gap-1">
-                        {transcript.map((word, index) => (
-                            isEditing && editingIndex === index ? (
-                                <input
-                                    key={index}
-                                    autoFocus
-                                    type="text"
-                                    className="w-20 px-1 py-0.5 text-sm rounded border border-blue-500 focus:outline-none dark:bg-gray-800 dark:text-white"
-                                    value={word.word || word.text || ''}
-                                    onChange={(e) => handleWordChange(index, e.target.value)}
-                                    onKeyDown={(e) => handleKeyDown(e, index)}
-                                    onBlur={() => setEditingIndex(null)}
+            {/* Two-column layout */}
+            <div className="max-w-7xl mx-auto px-6 pb-12 grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Left: Video */}
+                <div className="lg:col-span-3 space-y-4">
+                    <div className="relative rounded-2xl overflow-hidden aspect-video" style={{ background: '#000' }}>
+                        {serverFilename ? (
+                            <>
+                                <video
+                                    id="main-video"
+                                    src={`${API_URL}/uploads/${serverFilename}`}
+                                    className="w-full h-full object-contain"
+                                    controls
+                                    onTimeUpdate={(e) => setPlayedSeconds(e.currentTarget.currentTime)}
                                 />
-                            ) : (
-                                <span
-                                    key={index}
-                                    onClick={() => handleWordClick(word.start, index)}
-                                    className={`cursor-pointer px-1 rounded transition-colors ${playedSeconds >= word.start && playedSeconds < word.end
-                                        ? 'bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-100'
-                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                                        } ${isEditing ? 'hover:ring-2 hover:ring-green-400' : ''}`}
-                                >
-                                    {word.word || word.text}
-                                </span>
-                            )
-                        ))}
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Font Size */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Font Size</label>
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={styleConfig.fontSize}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, fontSize: e.target.value as any })}
-                                >
-                                    <option value="small">Small</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="large">Large</option>
-                                    <option value="huge">Huge</option>
-                                </select>
-                            </div>
-
-                            {/* Font Family */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Font Family</label>
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={styleConfig.fontFamily}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, fontFamily: e.target.value as any })}
-                                >
-                                    <option value="sans">Sans-Serif</option>
-                                    <option value="serif">Serif</option>
-                                    <option value="mono">Monospace</option>
-                                </select>
-                            </div>
-
-                            {/* Text Color */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Text Color</label>
-                                <input
-                                    type="color"
-                                    className="w-full h-10 p-1 border rounded dark:bg-gray-700"
-                                    value={styleConfig.color}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, color: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Background Color */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Background Color</label>
-                                <input
-                                    type="color"
-                                    className="w-full h-10 p-1 border rounded dark:bg-gray-700"
-                                    value={styleConfig.backgroundColor}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, backgroundColor: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Animation */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Animation</label>
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={styleConfig.animation}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, animation: e.target.value as any })}
-                                >
-                                    <option value="none">None</option>
-                                    <option value="karaoke">Karaoke (Highlight)</option>
-                                    <option value="fade">Fade In</option>
-                                    <option value="pop">Pop In</option>
-                                    <option value="slide">Slide Up</option>
-                                </select>
-                            </div>
-
-                            {/* Position */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Position</label>
-                                <div className="flex rounded-md shadow-sm" role="group">
-                                    {['top', 'middle', 'bottom'].map((pos) => (
-                                        <button
-                                            key={pos}
-                                            onClick={() => setStyleConfig({ ...styleConfig, position: pos as any })}
-                                            className={`px-4 py-2 text-sm font-medium border first:rounded-l-lg last:rounded-r-lg 
-                                                ${styleConfig.position === pos
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-white border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                                                }`}
+                                {currentCaptionText && (
+                                    <div className={`absolute left-0 right-0 text-center pointer-events-none px-6 ${getPositionClass()}`}>
+                                        <div
+                                            key={currentCaptionText}
+                                            className={`inline-block px-4 py-1.5 rounded-lg ${getAnimCls()}`}
+                                            style={{ backgroundColor: `${styleConfig.backgroundColor}b0`, ...getCaptionStyle() }}
                                         >
-                                            {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                                        </button>
-                                    ))}
+                                            {currentCaptionText}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-center p-8" style={{ color: 'var(--text-muted)' }}>
+                                <div>
+                                    <FileText size={40} className="mx-auto mb-3 opacity-40" />
+                                    <p className="text-sm">No video available. Upload a file from the home page.</p>
                                 </div>
                             </div>
-
-                            {/* Toggles */}
-                            <div className="md:col-span-2 flex flex-wrap gap-4 items-center p-2 bg-gray-50 dark:bg-gray-750 rounded border border-gray-100 dark:border-gray-600">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Format:</label>
-                                <button
-                                    onClick={() => setStyleConfig({ ...styleConfig, bold: !styleConfig.bold })}
-                                    className={`px-3 py-1 rounded border font-bold ${styleConfig.bold ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}
-                                >B</button>
-                                <button
-                                    onClick={() => setStyleConfig({ ...styleConfig, italic: !styleConfig.italic })}
-                                    className={`px-3 py-1 rounded border italic ${styleConfig.italic ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}
-                                >I</button>
-                                <button
-                                    onClick={() => setStyleConfig({ ...styleConfig, uppercase: !styleConfig.uppercase })}
-                                    className={`px-3 py-1 rounded border ${styleConfig.uppercase ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}
-                                >AA</button>
-                            </div>
-
-                            {/* Outline & Shadow */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outline Width: {styleConfig.outline}</label>
-                                <input
-                                    type="range" min="0" max="5"
-                                    value={styleConfig.outline}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, outline: parseInt(e.target.value) })}
-                                    className="w-full accent-blue-600"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shadow Depth: {styleConfig.shadow}</label>
-                                <input
-                                    type="range" min="0" max="5"
-                                    value={styleConfig.shadow}
-                                    onChange={(e) => setStyleConfig({ ...styleConfig, shadow: parseInt(e.target.value) })}
-                                    className="w-full accent-blue-600"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t dark:border-gray-700">
-                            <button
-                                onClick={handleBurn}
-                                disabled={isBurning}
-                                className={`w-full py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold rounded-lg shadow-lg transform transition hover:scale-[1.02] flex items-center justify-center gap-2 ${isBurning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                {isBurning ? (
-                                    <span>🔥 Burning... (Check Server Console)</span>
-                                ) : (
-                                    <span>🔥 Burn & Export Video</span>
-                                )}
-                            </button>
-                            <p className="text-xs text-gray-500 mt-2 text-center">
-                                This will create a new video file with these subtitles permanently baked in.
-                            </p>
-                        </div>
+                        )}
                     </div>
-                )}
+
+                    {/* Export Actions */}
+                    <div className="glass p-4 flex flex-wrap items-center gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: 'var(--text-muted)' }}>Export</span>
+                        <button onClick={exportTxt} className="btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5">
+                            <FileText size={12} /> TXT
+                        </button>
+                        <button onClick={exportSrt} className="btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5">
+                            <Download size={12} /> SRT
+                        </button>
+                        <div className="flex-1" />
+                        <button
+                            onClick={() => setIsEditing(v => !v)}
+                            className="flex items-center gap-2 text-xs py-1.5 px-3 rounded-lg font-medium transition-all"
+                            style={{
+                                background: isEditing ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)',
+                                border: `1px solid ${isEditing ? 'rgba(52,211,153,0.4)' : 'var(--border)'}`,
+                                color: isEditing ? '#34d399' : 'var(--text-muted)',
+                            }}
+                        >
+                            {isEditing ? <Check size={13} /> : <Edit3 size={13} />}
+                            {isEditing ? 'Done Editing' : 'Edit Text'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Right: Panel */}
+                <div className="lg:col-span-2 glass flex flex-col overflow-hidden" style={{ maxHeight: '80vh' }}>
+                    {/* Tabs */}
+                    <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+                        {(['transcript', 'style'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className="flex-1 py-3.5 text-sm font-semibold capitalize transition-colors"
+                                style={{
+                                    color: activeTab === tab ? 'var(--accent-light)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                                }}
+                            >
+                                {tab === 'style' ? 'Style & Burn' : 'Transcript'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Panel content */}
+                    <div className="flex-1 overflow-y-auto p-5">
+                        {activeTab === 'transcript' ? (
+                            <div className="flex flex-wrap gap-1.5">
+                                {transcript.map((word, i) =>
+                                    isEditing && editingIndex === i ? (
+                                        <input
+                                            key={i} autoFocus type="text"
+                                            className="w-20 px-1.5 py-0.5 text-sm rounded-lg border outline-none"
+                                            style={{ background: 'rgba(124,58,237,0.2)', borderColor: 'var(--accent)', color: 'var(--text)' }}
+                                            value={word.word || word.text || ''}
+                                            onChange={(e) => handleWordChange(i, e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') setEditingIndex(null); }}
+                                            onBlur={() => setEditingIndex(null)}
+                                        />
+                                    ) : (
+                                        <span
+                                            key={i}
+                                            onClick={() => {
+                                                if (isEditing) { setEditingIndex(i); }
+                                                else {
+                                                    const v = document.getElementById('main-video') as HTMLVideoElement;
+                                                    if (v) v.currentTime = word.start;
+                                                }
+                                            }}
+                                            className={`cursor-pointer px-2 py-1 rounded-lg text-sm transition-all duration-150 ${isEditing ? 'hover:ring-1 ring-green-400' : ''}`}
+                                            style={{
+                                                background: playedSeconds >= word.start && playedSeconds < word.end
+                                                    ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.04)',
+                                                color: playedSeconds >= word.start && playedSeconds < word.end
+                                                    ? 'var(--accent-light)' : 'var(--text)',
+                                                border: '1px solid',
+                                                borderColor: playedSeconds >= word.start && playedSeconds < word.end
+                                                    ? 'rgba(124,58,237,0.4)' : 'transparent',
+                                            }}
+                                        >
+                                            {word.word || word.text}
+                                        </span>
+                                    )
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <SC label="Font Size">
+                                        <select value={styleConfig.fontSize} onChange={e => setStyleConfig({ ...styleConfig, fontSize: e.target.value })} className="input-base">
+                                            <option value="small">Small</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="large">Large</option>
+                                            <option value="huge">Huge</option>
+                                        </select>
+                                    </SC>
+                                    <SC label="Font">
+                                        <select value={styleConfig.fontFamily} onChange={e => setStyleConfig({ ...styleConfig, fontFamily: e.target.value })} className="input-base">
+                                            <option value="sans">Sans-Serif</option>
+                                            <option value="serif">Serif</option>
+                                            <option value="mono">Monospace</option>
+                                        </select>
+                                    </SC>
+                                    <SC label="Text Color">
+                                        <input type="color" value={styleConfig.color} onChange={e => setStyleConfig({ ...styleConfig, color: e.target.value })}
+                                            className="w-full h-10 rounded-lg cursor-pointer" style={{ border: '1px solid var(--border)', padding: '2px', background: 'rgba(255,255,255,0.05)' }} />
+                                    </SC>
+                                    <SC label="Background">
+                                        <input type="color" value={styleConfig.backgroundColor} onChange={e => setStyleConfig({ ...styleConfig, backgroundColor: e.target.value })}
+                                            className="w-full h-10 rounded-lg cursor-pointer" style={{ border: '1px solid var(--border)', padding: '2px', background: 'rgba(255,255,255,0.05)' }} />
+                                    </SC>
+                                    <SC label="Animation">
+                                        <select value={styleConfig.animation} onChange={e => setStyleConfig({ ...styleConfig, animation: e.target.value })} className="input-base">
+                                            <option value="none">None</option>
+                                            <option value="karaoke">Karaoke</option>
+                                            <option value="fade">Fade In</option>
+                                            <option value="pop">Pop In</option>
+                                            <option value="slide">Slide Up</option>
+                                        </select>
+                                    </SC>
+                                    <SC label="Position">
+                                        <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                                            {['top', 'middle', 'bottom'].map(pos => (
+                                                <button key={pos} onClick={() => setStyleConfig({ ...styleConfig, position: pos })}
+                                                    className="flex-1 py-2 text-xs font-semibold capitalize transition-colors"
+                                                    style={{
+                                                        background: styleConfig.position === pos ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                                                        color: styleConfig.position === pos ? 'white' : 'var(--text-muted)',
+                                                    }}>
+                                                    {pos}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </SC>
+                                </div>
+
+                                {/* Format toggles */}
+                                <SC label="Format">
+                                    <div className="flex gap-2">
+                                        {[
+                                            { key: 'bold', label: 'B', style: { fontWeight: 'bold' } },
+                                            { key: 'italic', label: 'I', style: { fontStyle: 'italic' } },
+                                            { key: 'uppercase', label: 'AA', style: {} },
+                                        ].map(({ key, label, style }) => (
+                                            <button key={key}
+                                                onClick={() => setStyleConfig({ ...styleConfig, [key]: !(styleConfig as any)[key] })}
+                                                className="px-4 py-2 rounded-lg text-sm transition-colors"
+                                                style={{
+                                                    ...style,
+                                                    background: (styleConfig as any)[key] ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)',
+                                                    border: `1px solid ${(styleConfig as any)[key] ? 'var(--accent)' : 'var(--border)'}`,
+                                                    color: (styleConfig as any)[key] ? 'var(--accent-light)' : 'var(--text-muted)',
+                                                }}>
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </SC>
+
+                                <SC label={`Outline — ${styleConfig.outline}`}>
+                                    <input type="range" min={0} max={5} value={styleConfig.outline}
+                                        onChange={e => setStyleConfig({ ...styleConfig, outline: +e.target.value })}
+                                        className="w-full accent-purple-500" />
+                                </SC>
+                                <SC label={`Shadow — ${styleConfig.shadow}`}>
+                                    <input type="range" min={0} max={5} value={styleConfig.shadow}
+                                        onChange={e => setStyleConfig({ ...styleConfig, shadow: +e.target.value })}
+                                        className="w-full accent-purple-500" />
+                                </SC>
+
+                                {/* Burn */}
+                                <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                                    <button
+                                        onClick={handleBurn}
+                                        disabled={isBurning || !serverFilename}
+                                        className="w-full py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #dc2626, #ea580c)',
+                                            opacity: (isBurning || !serverFilename) ? 0.5 : 1,
+                                            cursor: (isBurning || !serverFilename) ? 'not-allowed' : 'pointer',
+                                        }}
+                                    >
+                                        {isBurning ? <Loader2 size={18} className="animate-spin" /> : <Flame size={18} />}
+                                        {isBurning ? 'Burning...' : 'Burn & Export Video'}
+                                    </button>
+                                    <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
+                                        Creates a new video with subtitles permanently embedded.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

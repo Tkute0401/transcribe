@@ -120,7 +120,7 @@ app.post('/api/transcribe', async (req, res) => {
 
     // Escape prompt carefully for shell
     const safePrompt = promptArg.replace(/"/g, '\\"');
-    const command = `python "${scriptPath}" "${audioPath}" "${modelArg}" "${langArg}" "${safePrompt}" "${taskArg}"`;
+    const command = `python3 "${scriptPath}" "${audioPath}" "${modelArg}" "${langArg}" "${safePrompt}" "${taskArg}"`;
 
     // Ensure python (and whisper) can find ffmpeg
     const ffmpegDir = path.dirname(ffmpegPath);
@@ -183,7 +183,7 @@ app.post('/api/burn', async (req, res) => {
 
     log(`Starting video burn for ${filename}...`);
     const scriptPath = path.join(__dirname, 'burn.py');
-    const command = `python "${scriptPath}" "${tempJsonPath}" "${uploadsDir}"`;
+    const command = `python3 "${scriptPath}" "${tempJsonPath}" "${uploadsDir}"`;
 
     // Ensure python (and ffmpeg) can find ffmpeg
     const ffmpegDir = path.dirname(ffmpegPath);
