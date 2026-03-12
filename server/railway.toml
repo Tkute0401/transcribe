@@ -1,2 +1,5 @@
 [build]
-builder = "DOCKERFILE"
+builder = "docker"
+dockerfile = "Dockerfile"
+context = "."
+timeout = 1800
