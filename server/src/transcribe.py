@@ -15,12 +15,9 @@ def transcribe(audio_path, model_name="base", language=None, initial_prompt=None
 
         # NOTE: vad_filter=False — we intentionally disable Silero VAD because it
         # aggressively skips quiet/background speech, causing large transcript gaps.
-        # Instead we use softer hallucination controls:
-        #   - no_speech_threshold=0.6  (only skip if model is >60% sure it's silence)
-        #   - compression_ratio_threshold=2.4  (catch repetition/looping hallucinations)
-        #   - log_prob_threshold=-1.0  (keep even lower-confidence words)
-        #   - condition_on_previous_text=True  (maintain context across segments)
-        #   - temperature=0  (deterministic; avoids creative hallucination)
+        # To prevent the "repetition loop" bug reported (repeating lines at the end):
+        #   - condition_on_previous_text=False  (CRITICAL: disables context loops)
+        #   - compression_ratio_threshold=2.2  (stricter check for repetitive output)
         segments, info = model.transcribe(
             audio_path,
             beam_size=5,
@@ -30,9 +27,9 @@ def transcribe(audio_path, model_name="base", language=None, initial_prompt=None
             task=task,
             vad_filter=False,
             no_speech_threshold=0.6,
-            compression_ratio_threshold=2.4,
+            compression_ratio_threshold=2.2,
             log_prob_threshold=-1.0,
-            condition_on_previous_text=True,
+            condition_on_previous_text=False,
             temperature=0,
         )
 
