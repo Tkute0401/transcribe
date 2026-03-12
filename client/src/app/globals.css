@@ -298,6 +298,52 @@ body {
 }
 
 /* ─────────────────────────────────────────
+   Style & Burn — Accordion Sections
+───────────────────────────────────────── */
+.style-section { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+.style-section-header { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; cursor: pointer; user-select: none; transition: background 0.15s; width: 100%; background: transparent; }
+.style-section-header:hover { background: rgba(255,255,255,0.04); }
+.style-section-body { padding: 1rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+.style-section-title { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: var(--text); }
+
+/* Font pills */
+.font-pills-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.font-pills-wrap::-webkit-scrollbar { height: 3px; }
+.font-pill { padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.8rem; cursor: pointer; transition: all 0.15s; background: transparent; white-space: nowrap; color: var(--text-muted); flex-shrink: 0; }
+.font-pill.active { border-color: var(--accent); background: rgba(124,58,237,0.2); color: var(--accent-light); }
+.font-pill:not(.active):hover { border-color: rgba(124,58,237,0.4); color: var(--text); }
+
+/* Button groups */
+.btn-group { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.btn-group-item { flex: 1; padding: 0.45rem 0; text-align: center; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; background: transparent; color: var(--text-muted); line-height: 1.3; }
+.btn-group-item.active { background: var(--accent); color: white; }
+.btn-group-item:not(.active):hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+/* Animation picker grid */
+.anim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.anim-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0.55rem 0.3rem; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; background: transparent; font-size: 0.68rem; font-weight: 500; color: var(--text-muted); transition: all 0.15s; line-height: 1; }
+.anim-btn.active { border-color: var(--accent); background: rgba(124,58,237,0.2); color: var(--accent-light); }
+.anim-btn:not(.active):hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+/* Color swatch button */
+.color-swatch-btn { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); cursor: pointer; transition: border-color 0.15s; flex-shrink: 0; }
+.color-swatch-btn:hover { border-color: rgba(124,58,237,0.5); }
+.color-swatch { width: 28px; height: 28px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15); flex-shrink: 0; display: block; }
+.color-hex { font-size: 0.7rem; font-family: 'Space Mono', monospace; color: var(--text-muted); letter-spacing: 0.04em; }
+
+/* Disabled controls */
+.control-disabled { opacity: 0.35; pointer-events: none; user-select: none; }
+
+/* Live preview card */
+.live-preview-card { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 4px; }
+.live-preview-screen { position: relative; aspect-ratio: 16/9; background: repeating-linear-gradient(45deg, #111 0px, #111 10px, #0c0c0c 10px, #0c0c0c 20px); }
+.live-preview-label { position: absolute; top: 8px; right: 10px; font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.25); text-transform: uppercase; pointer-events: none; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; }
+.live-preview-caption-wrap { position: absolute; left: 0; right: 0; padding: 0 8%; pointer-events: none; display: flex; justify-content: center; }
+.live-preview-top { top: 12%; }
+.live-preview-mid { top: 50%; transform: translateY(-50%); }
+.live-preview-bot { bottom: 12%; }
+
+/* ─────────────────────────────────────────
    Light Mode
 ───────────────────────────────────────── */
 .light-mode {

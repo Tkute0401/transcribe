@@ -14,10 +14,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang="en">
             <head>
+                <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white' font-family='sans-serif'>C</text></svg>" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link
-                    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;600;700&family=Space+Mono:wght@400;700&family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap"
+                    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;600;700&family=Space+Mono:wght@400;700&family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700&family=Bebas+Neue&family=Lobster&family=Source+Sans+3:wght@300;400;600;700&family=Dancing+Script:wght@400;600;700&display=swap"
                     rel="stylesheet"
                 />
             </head>
