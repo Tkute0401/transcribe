@@ -32,5 +32,6 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 3001
 
-# Start the Node.js server
-CMD ["node", "src/server.js"]
+# Start the Node.js server directly using the absolute path to node
+# This avoids issues if 'npm' or 'node' isn't in the path for some reason
+ENTRYPOINT ["node", "src/server.js"]

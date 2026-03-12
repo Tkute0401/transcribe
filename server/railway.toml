@@ -2,4 +2,8 @@
 builder = "dockerfile"
 dockerFilePath = "Dockerfile"
 context = "."
-timeout = 1800
+
+[deploy]
+startCommand = "node src/server.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

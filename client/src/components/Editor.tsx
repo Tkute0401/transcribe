@@ -257,6 +257,7 @@ export default function Editor({ index }: { index?: number }) {
                                     src={`${API_URL}/uploads/${serverFilename}`}
                                     className="w-full h-full object-contain"
                                     controls
+                                    crossOrigin="anonymous"
                                     onTimeUpdate={(e) => setPlayedSeconds(e.currentTarget.currentTime)}
                                 />
                                 {currentChunk && (
