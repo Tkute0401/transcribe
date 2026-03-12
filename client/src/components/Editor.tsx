@@ -431,13 +431,14 @@ export default function Editor({ index }: { index?: number }) {
                     temperature: 0.3,
                 }),
             });
-            const data = await res.json();
             if (!res.ok) {
-                const msg = data.error?.message || `OpenAI error ${res.status}`;
                 if (res.status === 429) throw new Error('Rate limit reached — wait a moment and try again');
-                if (res.status === 401) throw new Error('Invalid API key');
-                throw new Error(msg);
+                if (res.status === 401) throw new Error('Invalid API key — check your key and try again');
+                let errMsg = `OpenAI error ${res.status}`;
+                try { const err = await res.json(); errMsg = err.error?.message || errMsg; } catch (_) {}
+                throw new Error(errMsg);
             }
+            const data = await res.json();
             const content = data.choices?.[0]?.message?.content || '';
             const jsonMatch = content.match(/\[[\s\S]*\]/);
             if (!jsonMatch) throw new Error('GPT returned an unexpected format — try again');
