@@ -191,6 +191,8 @@ export default function Editor({ index }: { index?: number }) {
     const [aiKey, setAiKey] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const [aiDiff, setAiDiff] = useState<{ original: any[]; cleaned: string[] } | null>(null);
+    const [aiCooldown, setAiCooldown] = useState(0); // seconds remaining before retry allowed
+    const aiCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const { addToast } = useToast();
 
@@ -417,6 +419,17 @@ export default function Editor({ index }: { index?: number }) {
     };
 
     // ── AI Polish ──────────────────────────────────────────────────────────────
+    const startCooldown = (seconds: number) => {
+        setAiCooldown(seconds);
+        if (aiCooldownRef.current) clearInterval(aiCooldownRef.current);
+        aiCooldownRef.current = setInterval(() => {
+            setAiCooldown((prev) => {
+                if (prev <= 1) { clearInterval(aiCooldownRef.current!); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
     const runAiPolish = async () => {
         if (!aiKey || !transcript.length) return;
         setAiLoading(true);
@@ -432,7 +445,7 @@ export default function Editor({ index }: { index?: number }) {
                 }),
             });
             if (!res.ok) {
-                if (res.status === 429) throw new Error('Rate limit reached — wait a moment and try again');
+                if (res.status === 429) { startCooldown(30); throw new Error('Rate limited — wait 30 seconds before retrying'); }
                 if (res.status === 401) throw new Error('Invalid API key — check your key and try again');
                 let errMsg = `OpenAI error ${res.status}`;
                 try { const err = await res.json(); errMsg = err.error?.message || errMsg; } catch (_) {}
@@ -880,8 +893,13 @@ export default function Editor({ index }: { index?: number }) {
                             <>
                                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Uses GPT-4o to fix grammar, punctuation, and remove filler words. Your API key is never stored.</p>
                                 <input type="password" className="input-base" placeholder="sk-... (OpenAI API key)" value={aiKey} onChange={(e) => setAiKey(e.target.value)} autoComplete="off" />
-                                <button onClick={runAiPolish} disabled={aiLoading || !aiKey} className="btn-primary w-full" style={{ opacity: (!aiKey || aiLoading) ? 0.5 : 1 }}>
-                                    {aiLoading ? <><Loader2 size={16} className="animate-spin" /> Cleaning…</> : <><Sparkles size={16} /> Clean Transcript</>}
+                                <button onClick={runAiPolish} disabled={aiLoading || !aiKey || aiCooldown > 0} className="btn-primary w-full"
+                                    style={{ opacity: (!aiKey || aiLoading || aiCooldown > 0) ? 0.5 : 1 }}>
+                                    {aiLoading
+                                        ? <><Loader2 size={16} className="animate-spin" /> Cleaning…</>
+                                        : aiCooldown > 0
+                                            ? `Wait ${aiCooldown}s before retrying…`
+                                            : <><Sparkles size={16} /> Clean Transcript</>}
                                 </button>
                             </>
                         ) : (
