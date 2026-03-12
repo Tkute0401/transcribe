@@ -5,8 +5,6 @@ FROM node:18-bullseye
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
-    python3-dev \
-    build-essential \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,9 +27,11 @@ RUN pip3 install --no-cache-dir torch torchaudio --index-url https://download.py
 # Copy the rest of the application code
 COPY . .
 
+# Ensure the uploads directory exists
+RUN mkdir -p uploads
+
 # Expose the port the app runs on
 EXPOSE 3001
 
-# Start the Node.js server directly using the absolute path to node
-# This avoids issues if 'npm' or 'node' isn't in the path for some reason
-ENTRYPOINT ["node", "src/server.js"]
+# Start the Node.js server using exec form
+CMD ["node", "src/server.js"]
