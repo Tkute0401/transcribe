@@ -432,9 +432,15 @@ export default function Editor({ index }: { index?: number }) {
                 }),
             });
             const data = await res.json();
+            if (!res.ok) {
+                const msg = data.error?.message || `OpenAI error ${res.status}`;
+                if (res.status === 429) throw new Error('Rate limit reached — wait a moment and try again');
+                if (res.status === 401) throw new Error('Invalid API key');
+                throw new Error(msg);
+            }
             const content = data.choices?.[0]?.message?.content || '';
             const jsonMatch = content.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) throw new Error('Could not parse GPT response');
+            if (!jsonMatch) throw new Error('GPT returned an unexpected format — try again');
             const cleaned: string[] = JSON.parse(jsonMatch[0]);
             if (cleaned.length !== words.length) { addToast('Word count mismatch', 'warning'); return; }
             setAiDiff({ original: transcript, cleaned });
