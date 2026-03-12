@@ -4,10 +4,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 require('dotenv').config();
+
+// ── In-memory burn job store ──────────────────────────────────────────────────
+const burnJobs = new Map();
+// shape: { status: 'pending'|'burning'|'done'|'error', progress: 0-100, outputFile: null|string, error: null|string }
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -254,63 +258,171 @@ app.post('/api/transcribe', async (req, res) => {
   }
 });
 
-// Burn subtitles into video
-app.post('/api/burn', async (req, res) => {
-  const { filename, transcript, styleConfig } = req.body;
-
-  if (!filename || !transcript) {
-    return res.status(400).json({ error: 'Filename and transcript are required' });
-  }
-
-  const requestId = Date.now();
-  const tempJsonPath = path.join(__dirname, '../uploads', `burn_request_${requestId}.json`);
+// ── Async burn job runner ─────────────────────────────────────────────────────
+async function runBurnJob(jobId, { filename, transcript, styleConfig }) {
   const uploadsDir = path.join(__dirname, '../uploads');
+  const tempJsonPath = path.join(uploadsDir, `burn_request_${jobId}.json`);
+  const scriptPath = path.join(__dirname, 'burn.py');
+  const ffmpegDir = path.dirname(ffmpegPath);
+  const env = { ...process.env, PATH: `${process.env.PATH};${ffmpegDir}` };
 
   try {
-    // Write request data to temp file for Python script
+    burnJobs.set(jobId, { status: 'burning', progress: 10, outputFile: null, error: null });
+
+    const inputPath = path.join(uploadsDir, filename);
+
+    // Get video duration for progress calculation
+    let totalDuration = null;
+    try {
+      totalDuration = await new Promise((resolve) => {
+        ffmpeg.ffprobe(inputPath, (err, meta) => {
+          if (err || !meta) return resolve(null);
+          resolve(meta.format?.duration || null);
+        });
+      });
+    } catch (_) { /* ignore */ }
+
     fs.writeFileSync(tempJsonPath, JSON.stringify({ filename, transcript, styleConfig }));
+    burnJobs.set(jobId, { status: 'burning', progress: 20, outputFile: null, error: null });
 
-    log(`Starting video burn for ${filename}...`);
-    const scriptPath = path.join(__dirname, 'burn.py');
-    const command = `python3 "${scriptPath}" "${tempJsonPath}" "${uploadsDir}"`;
+    log(`Burn job ${jobId}: running burn.py for ${filename}...`);
 
-    // Ensure python (and ffmpeg) can find ffmpeg
-    const ffmpegDir = path.dirname(ffmpegPath);
-    const env = { ...process.env, PATH: `${process.env.PATH};${ffmpegDir}` };
+    await new Promise((resolve, reject) => {
+      const proc = spawn('python3', [scriptPath, tempJsonPath, uploadsDir], { env });
+      let stdout = '';
+      let stderr = '';
 
-    const result = await new Promise((resolve, reject) => {
-      exec(command, { maxBuffer: 1024 * 1024 * 10, env }, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`exec error: ${error}`);
-          console.error(`stderr: ${stderr}`);
-          reject(error);
+      proc.stdout.on('data', (d) => { stdout += d.toString(); });
+      proc.stderr.on('data', (d) => {
+        const chunk = d.toString();
+        stderr += chunk;
+
+        // Parse FFmpeg progress from stderr: "time=HH:MM:SS.cc"
+        if (totalDuration) {
+          const match = chunk.match(/time=(\d+):(\d+):([\d.]+)/);
+          if (match) {
+            const elapsed = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
+            const pct = Math.min(95, Math.round(20 + (elapsed / totalDuration) * 75));
+            burnJobs.set(jobId, { status: 'burning', progress: pct, outputFile: null, error: null });
+          }
+        }
+      });
+
+      proc.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`burn.py exited with code ${code}: ${stderr.slice(-1000)}`));
           return;
         }
         try {
-          const jsonResult = JSON.parse(stdout);
-          if (jsonResult.error) {
-            reject(new Error(jsonResult.error));
-          } else {
-            resolve(jsonResult);
-          }
+          const result = JSON.parse(stdout.trim());
+          if (result.error) reject(new Error(result.error));
+          else resolve(result);
         } catch (e) {
-          console.error('Failed to parse Python output:', stdout);
-          reject(e);
+          reject(new Error(`Failed to parse burn output: ${stdout}`));
         }
       });
+    }).then((result) => {
+      log(`Burn job ${jobId} complete: ${result.outputFile}`);
+      burnJobs.set(jobId, { status: 'done', progress: 100, outputFile: result.outputFile, error: null });
     });
 
-    log(`Burn complete: ${result.outputFile}`);
-    res.json(result);
-
-  } catch (error) {
-    console.error('Burn error:', error);
-    res.status(500).json({ error: 'Burn failed', details: error.message });
+  } catch (err) {
+    log(`Burn job ${jobId} failed: ${err.message}`);
+    burnJobs.set(jobId, { status: 'error', progress: 0, outputFile: null, error: err.message });
   } finally {
-    // Cleanup temp json
-    if (fs.existsSync(tempJsonPath)) {
-      fs.unlinkSync(tempJsonPath);
-    }
+    if (fs.existsSync(tempJsonPath)) fs.unlinkSync(tempJsonPath);
+    // Clean up job record after 30 min
+    setTimeout(() => burnJobs.delete(jobId), 30 * 60 * 1000);
+  }
+}
+
+// POST /api/burn — returns jobId immediately, runs async
+app.post('/api/burn', (req, res) => {
+  const { filename, transcript, styleConfig } = req.body;
+  if (!filename || !transcript) {
+    return res.status(400).json({ error: 'Filename and transcript are required' });
+  }
+  const jobId = Date.now().toString();
+  burnJobs.set(jobId, { status: 'pending', progress: 0, outputFile: null, error: null });
+  res.json({ jobId });
+  runBurnJob(jobId, { filename, transcript, styleConfig }).catch((e) => {
+    log(`Unhandled burn error for job ${jobId}: ${e.message}`);
+  });
+});
+
+// GET /api/burn-status/:jobId — poll for progress
+app.get('/api/burn-status/:jobId', (req, res) => {
+  const job = burnJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json(job);
+});
+
+// ── Preview frame ─────────────────────────────────────────────────────────────
+
+function generateTestAss(styleConfig) {
+  const fontMap = { sans: 'Arial', serif: 'Times New Roman', mono: 'Courier New', oswald: 'Oswald', roboto: 'Roboto' };
+  const sizeMap = { small: 32, medium: 52, large: 80, huge: 120 };
+  const fontName = fontMap[styleConfig.fontFamily || 'sans'] || 'Arial';
+  const fontSize = sizeMap[styleConfig.fontSize || 'medium'] || 52;
+  const hexToAss = (hex) => {
+    const h = (hex || '#FFFFFF').replace('#', '');
+    if (h.length !== 6) return '&H00FFFFFF';
+    return `&H00${h.slice(4,6)}${h.slice(2,4)}${h.slice(0,2)}`.toUpperCase();
+  };
+  const primaryColor = hexToAss(styleConfig.color || '#FFFFFF');
+  let backColor = hexToAss(styleConfig.backgroundColor || '#000000').replace('&H00', '&H80');
+  const bold = styleConfig.bold ? -1 : 0;
+  const italic = styleConfig.italic ? -1 : 0;
+  const outline = styleConfig.outline ?? 2;
+  const shadow = styleConfig.shadow ?? 2;
+  const pos = styleConfig.position || 'bottom';
+  const alignment = pos === 'top' ? 8 : pos === 'middle' ? 5 : 2;
+  const text = styleConfig.uppercase ? 'PREVIEW CAPTION' : 'Preview Caption';
+
+  return [
+    '[Script Info]', 'ScriptType: v4.00+', 'PlayResX: 1920', 'PlayResY: 1080', 'WrapStyle: 0', 'ScaledBorderAndShadow: yes', '',
+    '[V4+ Styles]',
+    'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
+    `Style: Default,${fontName},${fontSize},${primaryColor},&H000000FF,&H00000000,${backColor},${bold},${italic},0,0,100,100,0,0,1,${outline},${shadow},${alignment},50,50,50,1`,
+    '', '[Events]',
+    'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+    `Dialogue: 0,0:00:00.00,0:00:10.00,Default,,0,0,0,,${text}`,
+  ].join('\n');
+}
+
+app.post('/api/preview-frame', async (req, res) => {
+  const { filename, styleConfig = {}, timestamp = 5 } = req.body;
+  if (!filename) return res.status(400).json({ error: 'filename required' });
+
+  const uploadsDir = path.join(__dirname, '../uploads');
+  const filePath = path.join(uploadsDir, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+  const id = Date.now();
+  const assPath = path.join(uploadsDir, `preview_${id}.ass`);
+  const outputPath = path.join(uploadsDir, `preview_${id}.jpg`);
+
+  try {
+    fs.writeFileSync(assPath, generateTestAss(styleConfig));
+
+    await new Promise((resolve, reject) => {
+      ffmpeg(filePath)
+        .seekInput(Math.max(0, timestamp))
+        .frames(1)
+        .outputOptions([`-vf ass=${assPath}`])
+        .save(outputPath)
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    const imageData = fs.readFileSync(outputPath).toString('base64');
+    res.json({ image: `data:image/jpeg;base64,${imageData}` });
+  } catch (err) {
+    log(`Preview frame error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (fs.existsSync(assPath)) fs.unlinkSync(assPath);
+    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
   }
 });
 
