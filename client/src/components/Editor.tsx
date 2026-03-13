@@ -12,7 +12,7 @@ import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useToast } from '@/components/Toast';
 import ExportDropdown from '@/components/ExportDropdown';
-import PresetSelector, { STYLE_PRESETS, DEFAULT_STYLE, type StyleConfig } from '@/components/PresetSelector';
+import PresetSelector, { DEFAULT_STYLE, type StyleConfig } from '@/components/PresetSelector';
 import WaveformPlayer from '@/components/WaveformPlayer';
 import { chunkTranscript, buildSrt, buildVtt, buildAss, downloadFile } from '@/lib/transcript';
 
@@ -87,8 +87,8 @@ function ConfettiOverlay({ onDone }: { onDone: () => void }) {
 }
 
 // ─── Style Section (accordion) ───────────────────────────────────────────────
-function StyleSection({ id, icon, title, open, onToggle, children }: {
-    id: string; icon: string; title: string; open: boolean;
+function StyleSection({ icon, title, open, onToggle, children }: {
+    icon: string; title: string; open: boolean;
     onToggle: () => void; children: React.ReactNode;
 }) {
     return (
@@ -498,6 +498,7 @@ export default function Editor({ index }: { index?: number }) {
             style={{ width: small ? '4rem' : '5rem', background: 'rgba(124,58,237,0.2)', borderColor: 'var(--accent)', color: 'var(--text)' }}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={(e) => e.target.select()}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIndex(null); }}
             onBlur={() => setEditingIndex(null)} />
     );
@@ -539,7 +540,7 @@ export default function Editor({ index }: { index?: number }) {
             </div>
 
             {/* ── Section 1: Typography ─────────────────────────────────────────── */}
-            <StyleSection id="typography" icon="📝" title="Typography" open={openSections.has('typography')} onToggle={() => toggleSection('typography')}>
+            <StyleSection icon="📝" title="Typography" open={openSections.has('typography')} onToggle={() => toggleSection('typography')}>
                 {/* Font family pills */}
                 <SC label="Font Family">
                     <div className="font-pills-wrap">
@@ -614,7 +615,7 @@ export default function Editor({ index }: { index?: number }) {
             </StyleSection>
 
             {/* ── Section 2: Background & Effects ──────────────────────────────── */}
-            <StyleSection id="background" icon="🎨" title="Background & Effects" open={openSections.has('background')} onToggle={() => toggleSection('background')}>
+            <StyleSection icon="🎨" title="Background & Effects" open={openSections.has('background')} onToggle={() => toggleSection('background')}>
                 {/* Background style */}
                 <SC label="Background Style">
                     <div className="anim-grid">
@@ -687,7 +688,7 @@ export default function Editor({ index }: { index?: number }) {
             </StyleSection>
 
             {/* ── Section 3: Animation & Position ──────────────────────────────── */}
-            <StyleSection id="animation" icon="✨" title="Animation & Position" open={openSections.has('animation')} onToggle={() => toggleSection('animation')}>
+            <StyleSection icon="✨" title="Animation & Position" open={openSections.has('animation')} onToggle={() => toggleSection('animation')}>
                 {/* Animation type */}
                 <SC label="Animation">
                     <div className="anim-grid">
@@ -752,7 +753,7 @@ export default function Editor({ index }: { index?: number }) {
             </StyleSection>
 
             {/* ── Section 4: Export ──────────────────────────────────────────────── */}
-            <StyleSection id="export" icon="🎬" title="Export Quality" open={openSections.has('export')} onToggle={() => toggleSection('export')}>
+            <StyleSection icon="🎬" title="Export Quality" open={openSections.has('export')} onToggle={() => toggleSection('export')}>
                 <SC label="Quality">
                     <div className="btn-group">
                         {([
