@@ -492,16 +492,18 @@ export default function Editor({ index }: { index?: number }) {
         </div>
     );
 
-    const InlineInput = ({ value, onChange, type = 'text', small = false }: any) => (
-        <input autoFocus type={type} step={type === 'number' ? '0.01' : undefined}
-            className="px-1.5 py-0.5 text-xs rounded-lg border outline-none"
-            style={{ width: small ? '4rem' : '5rem', background: 'rgba(124,58,237,0.2)', borderColor: 'var(--accent)', color: 'var(--text)' }}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIndex(null); }}
-            onBlur={() => setEditingIndex(null)} />
-    );
+    const inlineInputProps = (value: any, onChange: (v: string) => void, small = false, type = 'text') => ({
+        autoFocus: true,
+        type,
+        step: type === 'number' ? '0.01' : undefined,
+        className: 'px-1.5 py-0.5 text-xs rounded-lg border outline-none',
+        style: { width: small ? '4rem' : '5rem', background: 'rgba(124,58,237,0.2)', borderColor: 'var(--accent)', color: 'var(--text)' } as React.CSSProperties,
+        value,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
+        onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select(),
+        onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIndex(null); },
+        onBlur: () => setEditingIndex(null),
+    });
 
     // ─── Style & Burn Tab ────────────────────────────────────────────────────────
     const styleBurnTab = (
@@ -1108,11 +1110,11 @@ export default function Editor({ index }: { index?: number }) {
                                             return (
                                                 <div key={i} className="flex flex-col gap-1 p-2 rounded-xl"
                                                     style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid var(--accent)' }}>
-                                                    <InlineInput value={wordText} onChange={(v: string) => updateWord(i, 'word', v)} />
+                                                    <input {...inlineInputProps(wordText, (v) => updateWord(i, 'word', v))} />
                                                     <div className="flex gap-1 items-center">
-                                                        <InlineInput value={word.start} type="number" small onChange={(v: string) => updateWord(i, 'start', v)} />
+                                                        <input {...inlineInputProps(word.start, (v) => updateWord(i, 'start', v), true, 'number')} />
                                                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>→</span>
-                                                        <InlineInput value={word.end} type="number" small onChange={(v: string) => updateWord(i, 'end', v)} />
+                                                        <input {...inlineInputProps(word.end, (v) => updateWord(i, 'end', v), true, 'number')} />
                                                     </div>
                                                 </div>
                                             );
@@ -1120,16 +1122,20 @@ export default function Editor({ index }: { index?: number }) {
                                         return (
                                             <div key={i} className="group relative flex items-center gap-0.5">
                                                 <span
+                                                    onMouseDown={(e) => {
+                                                        if (isEditing) {
+                                                            e.preventDefault(); // keep focus on any open input, avoiding blur race
+                                                            setEditingIndex(i);
+                                                        }
+                                                    }}
                                                     onClick={() => {
-                                                        if (isEditing) setEditingIndex(i);
-                                                        else { const v = document.getElementById('main-video') as HTMLVideoElement; if (v) v.currentTime = word.start; }
+                                                        if (!isEditing) { const v = document.getElementById('main-video') as HTMLVideoElement; if (v) v.currentTime = word.start; }
                                                     }}
                                                     className="cursor-pointer px-2 py-1 rounded-lg text-sm transition-all duration-150"
                                                     style={{
-                                                        background: isActive ? 'rgba(124,58,237,0.35)' : isMatch ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.04)',
+                                                        background: isActive ? 'rgba(124,58,237,0.35)' : isMatch ? 'rgba(251,191,36,0.15)' : isEditing ? 'rgba(52,211,153,0.07)' : 'rgba(255,255,255,0.04)',
                                                         color: isActive ? 'var(--accent-light)' : 'var(--text)',
-                                                        border: `1px solid ${isActive ? 'rgba(124,58,237,0.4)' : isMatch ? 'rgba(251,191,36,0.4)' : 'transparent'}`,
-                                                        outline: isEditing ? '1px dashed rgba(52,211,153,0.3)' : 'none',
+                                                        border: `1px solid ${isActive ? 'rgba(124,58,237,0.4)' : isMatch ? 'rgba(251,191,36,0.4)' : isEditing ? 'rgba(52,211,153,0.25)' : 'transparent'}`,
                                                     }}>
                                                     {wordText}
                                                 </span>
