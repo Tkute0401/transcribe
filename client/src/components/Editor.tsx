@@ -128,6 +128,7 @@ export default function Editor({ index }: { index?: number }) {
     const { current: transcript, set: setTranscript, undo, redo, canUndo, canRedo } =
         useUndoRedo<any[]>(mockTranscript);
     const initializedRef = useRef(false);
+    const wordsContainerRef = useRef<HTMLDivElement>(null);
 
     // ── UI state ───────────────────────────────────────────────────────────────
     const [playedSeconds, setPlayedSeconds] = useState(0);
@@ -484,6 +485,18 @@ export default function Editor({ index }: { index?: number }) {
         '?': () => setShowShortcuts((v) => !v),
     });
 
+    // Close inline editor when clicking outside the words container
+    useEffect(() => {
+        if (!isEditing) return;
+        const handler = (e: MouseEvent) => {
+            if (wordsContainerRef.current && !wordsContainerRef.current.contains(e.target as Node)) {
+                setEditingIndex(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [isEditing]);
+
     // ── Sub-components ─────────────────────────────────────────────────────────
     const SC = ({ label, children }: { label: string; children: React.ReactNode }) => (
         <div>
@@ -502,7 +515,6 @@ export default function Editor({ index }: { index?: number }) {
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
         onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select(),
         onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIndex(null); },
-        onBlur: () => setEditingIndex(null),
     });
 
     // ─── Style & Burn Tab ────────────────────────────────────────────────────────
@@ -1101,7 +1113,7 @@ export default function Editor({ index }: { index?: number }) {
                     <div className="flex-1 overflow-y-auto p-4">
                         {activeTab === 'transcript' ? (
                             transcriptView === 'words' ? (
-                                <div className="flex flex-wrap gap-1.5">
+                                <div ref={wordsContainerRef} className="flex flex-wrap gap-1.5">
                                     {transcript.map((word, i) => {
                                         const isActive = playedSeconds >= word.start && playedSeconds < word.end;
                                         const wordText = word.word || word.text || '';
