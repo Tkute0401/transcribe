@@ -55,6 +55,7 @@ export default function Upload() {
     const [prompt, setPrompt] = useState('');
     const [shouldTranslate, setShouldTranslate] = useState(false);
     const [model, setModel] = useState('base');
+    const [shouldTransliterate, setShouldTransliterate] = useState(false);
     const [progresses, setProgresses] = useState<Record<string, number>>({});
     const [statuses, setStatuses] = useState<Record<string, string>>({});
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
@@ -174,6 +175,7 @@ export default function Upload() {
                     model,
                     prompt,
                     task: shouldTranslate ? 'translate' : 'transcribe',
+                    transliterate: shouldTransliterate,
                 });
 
                 // Store duration for ETA display
@@ -395,6 +397,16 @@ export default function Upload() {
                                 style={{ transform: shouldTranslate ? 'translateX(1.25rem)' : 'translateX(2px)' }} />
                         </div>
                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Translate everything to English</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <div onClick={() => setShouldTransliterate((v) => !v)}
+                            className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+                            style={{ background: shouldTransliterate ? 'var(--accent)' : 'rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                            <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow"
+                                style={{ transform: shouldTransliterate ? 'translateX(1.25rem)' : 'translateX(2px)' }} />
+                        </div>
+                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Output in Latin script (e.g. Hinglish)</span>
                     </label>
                 </div>
             )}

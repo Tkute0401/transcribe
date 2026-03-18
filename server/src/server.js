@@ -7,7 +7,12 @@ const https = require('https');
 const { exec, spawn } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
+const OpenAI = require('openai');
 require('dotenv').config();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // ── In-memory burn job store ──────────────────────────────────────────────────
 const burnJobs = new Map();
@@ -155,7 +160,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 
 app.post('/api/transcribe', async (req, res) => {
-  const { filename, language, model } = req.body;
+  const { filename, language, model, transliterate } = req.body;
 
   if (!filename) {
     return res.status(400).json({ error: 'Filename is required' });
@@ -244,10 +249,36 @@ app.post('/api/transcribe', async (req, res) => {
       fs.unlinkSync(audioPath);
     }
 
+    let final_text = transcription.text;
+
+    if (transliterate && final_text) {
+      log('Transliterating to Latin script...');
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini", // Use a fast and cost-effective model
+          messages: [
+            {
+              role: "system",
+              content: "You are a transliterator. Your task is to transliterate the given text into Latin script (Romanized) while keeping the original language (e.g., Hinglish, Mix of languages). Keep English words as they are. Preserve the meaning and tone. Only return the transliterated text, nothing else."
+            },
+            {
+              role: "user",
+              content: final_text
+            }
+          ],
+          temperature: 0,
+        });
+        final_text = response.choices[0].message.content.trim();
+        log('Transliteration complete');
+      } catch (transError) {
+        log(`Transliteration failed: ${transError.message} - falling back to original text`);
+      }
+    }
+
     log('Transcription complete');
 
     res.json({
-      text: transcription.text,
+      text: final_text,
       words: transcription.words, // Array of { word, start, end }
       duration: transcription.duration
     });
